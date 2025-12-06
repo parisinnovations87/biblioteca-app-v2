@@ -39,7 +39,7 @@ async function signInWithGoogle() {
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.origin
+                redirectTo: 'https://biblioteca-app-v2.netlify.app/'
             }
         });
         
@@ -203,4 +203,5 @@ async function loadAllUserData() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📚 Biblioteca Domestica - Inizializzazione...');
     initializeAuth();
+
 });
