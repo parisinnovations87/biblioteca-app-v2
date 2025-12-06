@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Mia Biblioteca - Debug Mode</title>
+    
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- Quagga per scanner barcode -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    
+    <style>
+        /* Stili semplificati per debug */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .debug-panel {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .hidden {
+            display: none;
+        }
+        #console-output {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: scroll;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Biblioteca Domestica - Debug Mode</h1>
+        
+        <div class="debug-panel">
+            <h3>Stato Sistema</h3>
+            <div id="status-info">Caricamento in corso...</div>
+            <div style="margin-top: 10px;">
+                <button class="btn" onclick="checkAllSystems()">🔍 Verifica Sistema</button>
+                <button class="btn" onclick="clearConsole()">🗑️ Pulisci Console</button>
+            </div>
+        </div>
+
+        <!-- Sezione Login -->
+        <div id="loginSection">
+            <h2>Login</h2>
+            
+            <!-- Google Login -->
+            <div style="margin-bottom: 20px;">
+                <h3>Google OAuth</h3>
+                <button id="googleSignInBtn" class="btn" onclick="testGoogleLogin()">
+                    🔑 Test Google Login
+                </button>
+                <span id="google-status" style="margin-left: 10px; color: #666;">Non testato</span>
+            </div>
+            
+            <!-- Fallback Login -->
+            <div>
+                <h3>Login Alternativo</h3>
+                <div class="form-group">
+                    <label for="userNameInput">Nome:</label>
+                    <input type="text" id="userNameInput" placeholder="Il tuo nome">
+                </div>
+                <div class="form-group">
+                    <label for="userEmailInput">Email:</label>
+                    <input type="email" id="userEmailInput" placeholder="la-tua@email.com">
+                </div>
+                <button class="btn btn-success" onclick="testLocalLogin()">
+                    ✅ Test Login Locale
+                </button>
+                <span id="local-status" style="margin-left: 10px; color: #666;">Non testato</span>
+            </div>
+        </div>
+
+        <!-- App Section (hidden initially) -->
+        <div id="appSection" class="hidden">
+            <h2>App Caricata Correttamente!</h2>
+            <div id="user-info"></div>
+            <button class="btn" onclick="signOut()">Esci</button>
+        </div>
+
+        <!-- Console Debug -->
+        <div style="margin-top: 30px;">
+            <h3>Console Debug</h3>
+            <div id="console-output"></div>
+        </div>
+    </div>
+
+    <script>
+        // Variabili globali per debug
+        let currentUser = null;
+        let books = [];
+        let debugConsole = [];
+
+        // Funzione debug console
+        function debugLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            debugConsole.push(logMessage);
+            console.log(logMessage);
+            updateConsoleOutput();
+        }
+
+        function updateConsoleOutput() {
+            const output = document.getElementById('console-output');
+            output.textContent = debugConsole.join('\n');
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearConsole() {
+            debugConsole = [];
+            updateConsoleOutput();
+        }
+
+        // Configurazione minima per test
+        const GOOGLE_CONFIG = {
+            CLIENT_ID: 'YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com',
+            SCOPES: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'
+        };
+
+        function isConfigurationValid() {
+            return GOOGLE_CONFIG.CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com';
+        }
+
+        // Test delle funzionalità
+        function checkAllSystems() {
+            debugLog('🔍 Inizio controllo sistemi');
+            
+            // Check 1: Configurazione
+            const configValid = isConfigurationValid();
+            debugLog(`Configurazione Google: ${configValid ? '✅ Valida' : '❌ Non configurata'}`, configValid ? 'success' : 'error');
+            
+            // Check 2: Google APIs
+            const googleLoaded = typeof google !== 'undefined';
+            debugLog(`Google APIs: ${googleLoaded ? '✅ Caricate' : '❌ Non caricate'}`, googleLoaded ? 'success' : 'error');
+            
+            // Check 3: DOM Elements
+            const loginSection = document.getElementById('loginSection');
+            const appSection = document.getElementById('appSection');
+            debugLog(`Elementi DOM: ${loginSection && appSection ? '✅ Trovati' : '❌ Mancanti'}`, loginSection && appSection ? 'success' : 'error');
+            
+            // Check 4: Event handlers
+            debugLog('Event handlers: ✅ Funzionanti (stai vedendo questo messaggio)', 'success');
+            
+            updateSystemStatus();
+        }
+
+        function updateSystemStatus() {
+            const statusDiv = document.getElementById('status-info');
+            const configValid = isConfigurationValid();
+            const googleLoaded = typeof google !== 'undefined';
+            
+            let status = '';
+            if (!configValid) {
+                status += '❌ Configurazione Google mancante<br>';
+                status += 'Devi sostituire YOUR_GOOGLE_CLIENT_ID_HERE in config.js<br><br>';
+            }
+            if (!googleLoaded) {
+                status += '⚠️ Google APIs non caricate completamente<br>';
+                status += 'Il login Google potrebbe non funzionare<br><br>';
+            }
+            
+            if (configValid && googleLoaded) {
+                status = '✅ Sistema pronto per il login Google';
+            } else {
+                status += '✅ Login locale sempre disponibile';
+            }
+            
+            statusDiv.innerHTML = status;
+        }
+
+        // Test Google Login
+        function testGoogleLogin() {
+            debugLog('🔑 Test Google Login avviato');
+            
+            if (!isConfigurationValid()) {
+                debugLog('❌ Configurazione Google non valida', 'error');
+                document.getElementById('google-status').textContent = '❌ Config mancante';
+                document.getElementById('google-status').style.color = 'red';
+                return;
+            }
+            
+            if (typeof google === 'undefined') {
+                debugLog('❌ Google APIs non caricate', 'error');
+                document.getElementById('google-status').textContent = '❌ APIs non caricate';
+                document.getElementById('google-status').style.color = 'red';
+                return;
+            }
+            
+            try {
+                // Simula il processo di login Google
+                debugLog('✅ Google APIs disponibili', 'success');
+                debugLog('ℹ️ Processo login Google simulato (serve configurazione reale)', 'info');
+                document.getElementById('google-status').textContent = '⚠️ Configurazione richiesta';
+                document.getElementById('google-status').style.color = 'orange';
+            } catch (error) {
+                debugLog(`❌ Errore Google Login: ${error.message}`, 'error');
+                document.getElementById('google-status').textContent = '❌ Errore';
+                document.getElementById('google-status').style.color = 'red';
+            }
+        }
+
+        // Test Login Locale
+        function testLocalLogin() {
+            debugLog('✅ Test Login Locale avviato');
+            
+            const userName = document.getElementById('userNameInput').value.trim();
+            const userEmail = document.getElementById('userEmailInput').value.trim();
+            
+            if (!userName || !userEmail) {
+                debugLog('❌ Nome e email obbligatori', 'error');
+                document.getElementById('local-status').textContent = '❌ Dati mancanti';
+                document.getElementById('local-status').style.color = 'red';
+                return;
+            }
+            
+            // Simula login locale
+            currentUser = {
+                id: 'local_' + Date.now(),
+                name: userName,
+                email: userEmail,
+                avatar: generateAvatarUrl(userName),
+                loginDate: new Date().toISOString(),
+                authMethod: 'local'
+            };
+            
+            debugLog(`✅ Login locale riuscito per: ${userName}`, 'success');
+            document.getElementById('local-status').textContent = '✅ Successo';
+            document.getElementById('local-status').style.color = 'green';
+            
+            showApp();
+        }
+
+        function generateAvatarUrl(name) {
+            const initials = name.split(' ').map(word => word.charAt(0)).join('').toUpperCase();
+            return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=4285f4&color=fff&size=128`;
+        }
+
+        function showApp() {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('appSection').classList.remove('hidden');
+            
+            document.getElementById('user-info').innerHTML = `
+                <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                    <h3>Utente Connesso</h3>
+                    <p><strong>Nome:</strong> ${currentUser.name}</p>
+                    <p><strong>Email:</strong> ${currentUser.email}</p>
+                    <p><strong>Metodo:</strong> ${currentUser.authMethod}</p>
+                    <p><strong>Data Login:</strong> ${new Date(currentUser.loginDate).toLocaleString()}</p>
+                </div>
+            `;
+            
+            debugLog('✅ App mostrata correttamente', 'success');
+        }
+
+        function signOut() {
+            currentUser = null;
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('appSection').classList.add('hidden');
+            debugLog('✅ Logout effettuato', 'success');
+            
+            // Reset status
+            document.getElementById('google-status').textContent = 'Non testato';
+            document.getElementById('google-status').style.color = '#666';
+            document.getElementById('local-status').textContent = 'Non testato';
+            document.getElementById('local-status').style.color = '#666';
+        }
+
+        // Inizializzazione
+        document.addEventListener('DOMContentLoaded', function() {
+            debugLog('🚀 Pagina caricata, inizializzazione in corso');
+            
+            setTimeout(() => {
+                checkAllSystems();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

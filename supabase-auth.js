@@ -1,0 +1,206 @@
+// ========================================
+// AUTENTICAZIONE CON SUPABASE
+// ========================================
+
+let currentUser = null;
+
+// Inizializza autenticazione
+async function initializeAuth() {
+    console.log('🔐 Inizializzazione autenticazione...');
+    
+    // Controlla se c'è già una sessione attiva
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.user) {
+        console.log('✅ Sessione trovata:', session.user.email);
+        await handleAuthSuccess(session.user);
+    } else {
+        console.log('ℹ️ Nessuna sessione attiva');
+    }
+    
+    // Ascolta i cambiamenti di autenticazione
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('🔄 Auth event:', event);
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+            await handleAuthSuccess(session.user);
+        } else if (event === 'SIGNED_OUT') {
+            handleSignOut();
+        }
+    });
+}
+
+// Login con Google
+async function signInWithGoogle() {
+    try {
+        console.log('🔐 Avvio login Google...');
+        setLoginLoading(true);
+        
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin
+            }
+        });
+        
+        if (error) {
+            throw error;
+        }
+        
+        // Il redirect avverrà automaticamente
+        console.log('✅ Redirect a Google...');
+        
+    } catch (error) {
+        console.error('❌ Errore login:', error);
+        showAlert('Errore durante il login: ' + error.message, 'error');
+        setLoginLoading(false);
+    }
+}
+
+// Gestisce login riuscito
+async function handleAuthSuccess(user) {
+    console.log('✅ Login riuscito:', user.email);
+    
+    // Crea o aggiorna profilo utente
+    await createOrUpdateUserProfile(user);
+    
+    // Imposta utente corrente
+    currentUser = {
+        id: user.id,
+        email: user.email,
+        name: user.user_metadata?.full_name || user.email.split('@')[0],
+        avatar: user.user_metadata?.avatar_url || generateAvatarUrl(user.email),
+        authMethod: 'google'
+    };
+    
+    setLoginLoading(false);
+    showApp();
+    await loadAllUserData();
+    showAlert(`Benvenuto ${currentUser.name}!`, 'success');
+}
+
+// Crea o aggiorna profilo utente
+async function createOrUpdateUserProfile(user) {
+    try {
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .upsert({
+                id: user.id,
+                full_name: user.user_metadata?.full_name || user.email.split('@')[0],
+                avatar_url: user.user_metadata?.avatar_url,
+                updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+        
+        if (error && error.code !== '23505') { // Ignora errore duplicate key
+            console.error('⚠️ Errore creazione profilo:', error);
+        } else {
+            console.log('✅ Profilo utente sincronizzato');
+        }
+    } catch (error) {
+        console.error('❌ Errore profilo:', error);
+    }
+}
+
+// Logout
+async function signOut() {
+    if (!confirm('Sei sicuro di voler uscire?')) {
+        return;
+    }
+    
+    try {
+        // Ferma lo scanner se attivo
+        if (typeof scannerActive !== 'undefined' && scannerActive) {
+            stopScanner();
+        }
+        
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+            throw error;
+        }
+        
+        handleSignOut();
+        showAlert('Logout effettuato con successo', 'info');
+        
+    } catch (error) {
+        console.error('❌ Errore logout:', error);
+        showAlert('Errore durante il logout', 'error');
+    }
+}
+
+// Gestisce logout
+function handleSignOut() {
+    currentUser = null;
+    books = [];
+    userLibraries = [];
+    userCategories = [];
+    userKeywords = [];
+    
+    hideApp();
+    clearForm();
+}
+
+// Genera avatar URL
+function generateAvatarUrl(email) {
+    const initial = email.charAt(0).toUpperCase();
+    const colors = ['4285f4', '34a853', 'fbbc05', 'ea4335', '9c27b0', '00bcd4'];
+    const colorIndex = email.length % colors.length;
+    return `https://ui-avatars.com/api/?name=${initial}&background=${colors[colorIndex]}&color=fff&size=128`;
+}
+
+// Mostra/Nascondi app
+function showApp() {
+    document.getElementById('loginSection').classList.add('hidden');
+    document.getElementById('appSection').classList.remove('hidden');
+    
+    document.getElementById('userName').textContent = currentUser.name;
+    document.getElementById('userEmail').textContent = currentUser.email;
+    document.getElementById('userAvatar').src = currentUser.avatar;
+    
+    const authMethod = document.getElementById('authMethod');
+    if (authMethod) {
+        authMethod.textContent = '🔐 Account Google';
+    }
+}
+
+function hideApp() {
+    document.getElementById('loginSection').classList.remove('hidden');
+    document.getElementById('appSection').classList.add('hidden');
+}
+
+// Loading state
+function setLoginLoading(loading) {
+    const loginBtn = document.getElementById('googleSignInBtn');
+    const loginLoading = document.getElementById('loginLoading');
+    
+    if (loading) {
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (loginLoading) loginLoading.classList.remove('hidden');
+    } else {
+        if (loginBtn) loginBtn.style.display = 'flex';
+        if (loginLoading) loginLoading.classList.add('hidden');
+    }
+}
+
+// Carica tutti i dati utente
+async function loadAllUserData() {
+    console.log('📥 Caricamento dati utente...');
+    
+    await Promise.all([
+        loadUserLibraries(),
+        loadUserCategories(),
+        loadUserKeywords()
+    ]);
+    
+    await loadBooks();
+    
+    console.log('✅ Dati caricati');
+}
+
+// Inizializza quando il DOM è pronto
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📚 Biblioteca Domestica - Inizializzazione...');
+    initializeAuth();
+});
