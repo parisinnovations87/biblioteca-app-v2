@@ -51,36 +51,74 @@ async function addLibrary() {
 
 // Elimina libreria
 async function deleteLibrary(libraryName) {
+    console.log('🔵 deleteLibrary chiamata per:', libraryName);
+    console.log('🔵 Lista librerie corrente:', userLibraries);
+    
     // Trova la libreria
     const library = userLibraries.find(lib => lib.name === libraryName);
-    if (!library) return;
+    
+    console.log('🔵 Libreria trovata:', library);
+    
+    if (!library) {
+        console.error('❌ Libreria non trovata:', libraryName);
+        showAlert('Libreria non trovata', 'error');
+        return;
+    }
     
     // Controlla se ci sono libri in questa libreria
     const booksInLibrary = books.filter(book => book.shelf === libraryName);
     
+    console.log('🔵 Libri in questa libreria:', booksInLibrary.length);
+    
+    let confirmMessage = '';
     if (booksInLibrary.length > 0) {
-        if (!confirm(`Ci sono ${booksInLibrary.length} libri in questa libreria. Eliminandola, dovrai riassegnare i libri. Continuare?`)) {
-            return;
-        }
+        confirmMessage = `Ci sono ${booksInLibrary.length} libri in questa libreria.\n\nEliminandola, i libri rimarranno senza posizione.\n\nContinuare?`;
     } else {
-        if (!confirm(`Sei sicuro di voler eliminare la libreria "${libraryName}"?`)) {
-            return;
-        }
+        confirmMessage = `Sei sicuro di voler eliminare la libreria "${libraryName}"?`;
+    }
+    
+    const confirmed = confirm(confirmMessage);
+    console.log('🔵 Utente ha confermato:', confirmed);
+    
+    if (!confirmed) {
+        console.log('🔵 Cancellazione annullata dall\'utente');
+        return;
     }
     
     try {
+        console.log('🗑️ Tentativo eliminazione libreria:', libraryName, 'ID:', library.id);
+        
+        // Elimina da Supabase
         await deleteLibraryFromSupabase(library.id);
+        
+        console.log('✅ Eliminazione da Supabase completata');
         
         // Rimuovi dalla lista locale
         userLibraries = userLibraries.filter(lib => lib.id !== library.id);
         
+        console.log('✅ Rimossa dalla lista locale');
+        
+        // Aggiorna i libri locali
+        books.forEach(book => {
+            if (book.shelf === libraryName) {
+                book.shelf = '';
+                book.libraryId = null;
+            }
+        });
+        
+        console.log('✅ Libri aggiornati');
+        
         updateLibraryDropdown();
         displayLibraries();
+        displayBooks();
         
-        showAlert('Libreria eliminata', 'success');
+        console.log('✅ UI aggiornata');
+        
+        showAlert('Libreria eliminata con successo', 'success');
         
     } catch (error) {
-        console.error('❌ Errore eliminazione libreria:', error);
+        console.error('❌ ERRORE eliminazione libreria:', error);
+        console.error('❌ Stack trace:', error.stack);
         showAlert('Errore durante l\'eliminazione: ' + error.message, 'error');
     }
 }
