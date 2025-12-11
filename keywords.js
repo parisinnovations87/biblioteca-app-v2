@@ -51,38 +51,76 @@ async function addKeyword() {
 
 // Elimina parola chiave
 async function deleteKeyword(keywordName) {
+    console.log('🔵 deleteKeyword chiamata per:', keywordName);
+    console.log('🔵 Lista parole chiave corrente:', userKeywords);
+    
     // Trova la parola chiave
     const keyword = userKeywords.find(kw => kw.name === keywordName);
-    if (!keyword) return;
+    
+    console.log('🔵 Parola chiave trovata:', keyword);
+    
+    if (!keyword) {
+        console.error('❌ Parola chiave non trovata:', keywordName);
+        showAlert('Parola chiave non trovata', 'error');
+        return;
+    }
     
     // Controlla se ci sono libri con questa parola chiave
     const booksWithKeyword = books.filter(book => 
         book.keywords && book.keywords.split(', ').includes(keywordName)
     );
     
+    console.log('🔵 Libri con questa parola chiave:', booksWithKeyword.length);
+    
+    let confirmMessage = '';
     if (booksWithKeyword.length > 0) {
-        if (!confirm(`Ci sono ${booksWithKeyword.length} libri con questa parola chiave. Eliminandola, dovrai riassegnare le parole chiave ai libri. Continuare?`)) {
-            return;
-        }
+        confirmMessage = `Ci sono ${booksWithKeyword.length} libri con questa parola chiave.\n\nEliminandola, verrà rimossa dai libri.\n\nContinuare?`;
     } else {
-        if (!confirm(`Sei sicuro di voler eliminare la parola chiave "${keywordName}"?`)) {
-            return;
-        }
+        confirmMessage = `Sei sicuro di voler eliminare la parola chiave "${keywordName}"?`;
+    }
+    
+    const confirmed = confirm(confirmMessage);
+    console.log('🔵 Utente ha confermato:', confirmed);
+    
+    if (!confirmed) {
+        console.log('🔵 Cancellazione annullata dall\'utente');
+        return;
     }
     
     try {
+        console.log('🗑️ Tentativo eliminazione parola chiave:', keywordName, 'ID:', keyword.id);
+        
+        // Elimina da Supabase
         await deleteKeywordFromSupabase(keyword.id);
+        
+        console.log('✅ Eliminazione da Supabase completata');
         
         // Rimuovi dalla lista locale
         userKeywords = userKeywords.filter(kw => kw.id !== keyword.id);
         
+        console.log('✅ Rimossa dalla lista locale');
+        
+        // Aggiorna i libri locali
+        books.forEach(book => {
+            if (book.keywords) {
+                const keywords = book.keywords.split(', ').filter(k => k !== keywordName);
+                book.keywords = keywords.join(', ');
+            }
+        });
+        
+        console.log('✅ Libri aggiornati');
+        
         updateKeywordDropdown();
         displayKeywords();
+        displayBooks();
         
-        showAlert('Parola chiave eliminata', 'success');
+        console.log('✅ UI aggiornata');
+        
+        showAlert('Parola chiave eliminata con successo', 'success');
         
     } catch (error) {
-        console.error('❌ Errore eliminazione parola chiave:', error);
+        console.error('❌ ERRORE eliminazione parola chiave:', error);
+        console.error('❌ Stack trace:', error.stack);
         showAlert('Errore durante l\'eliminazione: ' + error.message, 'error');
     }
 }
