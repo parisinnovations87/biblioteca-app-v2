@@ -2,6 +2,19 @@
 // OPERAZIONI DATABASE SUPABASE
 // ========================================
 
+// Gestione errori sessione
+function handleSessionError(error) {
+    if (error.message?.includes('session') || 
+        error.message?.includes('JWT') || 
+        error.message?.includes('expired') ||
+        error.code === 'PGRST301') {
+        console.error('❌ Sessione invalida, logout forzato');
+        setTimeout(() => signOut(), 100);
+        return true;
+    }
+    return false;
+}
+
 // ==================== LIBRI ====================
 
 // Carica tutti i libri dell'utente
@@ -19,7 +32,10 @@ async function loadBooksFromSupabase() {
             `)
             .order('created_at', { ascending: false });
         
-        if (error) throw error;
+        if (error) {
+            if (handleSessionError(error)) return;
+            throw error;
+        }
         
         // Trasforma i dati nel formato dell'app
         books = data.map(book => ({
@@ -76,7 +92,10 @@ async function saveBookToSupabase(bookData) {
             .select()
             .single();
         
-        if (bookError) throw bookError;
+        if (bookError) {
+            if (handleSessionError(bookError)) return;
+            throw bookError;
+        }
         
         // 2. Aggiungi le parole chiave se presenti
         if (bookData.keywordIds && bookData.keywordIds.length > 0) {
@@ -89,7 +108,9 @@ async function saveBookToSupabase(bookData) {
                 .from('book_keywords')
                 .insert(bookKeywords);
             
-            if (kwError) console.error('⚠️ Errore parole chiave:', kwError);
+            if (kwError) {
+                console.error('⚠️ Errore parole chiave:', kwError);
+            }
         }
         
         console.log('✅ Libro salvato:', book.id);
@@ -123,14 +144,21 @@ async function updateBookInSupabase(bookId, bookData) {
             })
             .eq('id', bookId);
         
-        if (bookError) throw bookError;
+        if (bookError) {
+            if (handleSessionError(bookError)) return;
+            throw bookError;
+        }
         
         // 2. Aggiorna le parole chiave
         // Prima elimina le vecchie
-        await supabase
+        const { error: deleteError } = await supabase
             .from('book_keywords')
             .delete()
             .eq('book_id', bookId);
+        
+        if (deleteError) {
+            console.warn('⚠️ Errore eliminazione vecchie parole chiave:', deleteError);
+        }
         
         // Poi aggiungi le nuove
         if (bookData.keywordIds && bookData.keywordIds.length > 0) {
@@ -139,9 +167,13 @@ async function updateBookInSupabase(bookId, bookData) {
                 keyword_id: kwId
             }));
             
-            await supabase
+            const { error: insertError } = await supabase
                 .from('book_keywords')
                 .insert(bookKeywords);
+            
+            if (insertError) {
+                console.warn('⚠️ Errore inserimento nuove parole chiave:', insertError);
+            }
         }
         
         console.log('✅ Libro aggiornato');
@@ -162,7 +194,10 @@ async function deleteBookFromSupabase(bookId) {
             .delete()
             .eq('id', bookId);
         
-        if (error) throw error;
+        if (error) {
+            if (handleSessionError(error)) return;
+            throw error;
+        }
         
         console.log('✅ Libro eliminato');
         
@@ -182,7 +217,10 @@ async function loadCategoriesFromSupabase() {
             .select('*')
             .order('name');
         
-        if (error) throw error;
+        if (error) {
+            if (handleSessionError(error)) return;
+            throw error;
+        }
         
         userCategories = data.map(cat => ({
             id: cat.id,
@@ -211,7 +249,10 @@ async function saveCategoryToSupabase(categoryName) {
             .select()
             .single();
         
-        if (error) throw error;
+        if (error) {
+            if (handleSessionError(error)) return;
+            throw error;
+        }
         
         console.log('✅ Categoria salvata:', data.id);
         return data.id;
@@ -230,7 +271,10 @@ async function deleteCategoryFromSupabase(categoryId) {
             .delete()
             .eq('id', categoryId);
         
-        if (error) throw error;
+        if (error) {
+            if (handleSessionError(error)) return;
+            throw error;
+        }
         
         console.log('✅ Categoria eliminata');
         
@@ -250,7 +294,10 @@ async function loadKeywordsFromSupabase() {
             .select('*')
             .order('name');
         
-        if (error) throw error;
+        if (error) {
+            if (handleSessionError(error)) return;
+            throw error;
+        }
         
         userKeywords = data.map(kw => ({
             id: kw.id,
@@ -279,7 +326,10 @@ async function saveKeywordToSupabase(keywordName) {
             .select()
             .single();
         
-        if (error) throw error;
+        if (error) {
+            if (handleSessionError(error)) return;
+            throw error;
+        }
         
         console.log('✅ Parola chiave salvata:', data.id);
         return data.id;
@@ -298,7 +348,10 @@ async function deleteKeywordFromSupabase(keywordId) {
             .delete()
             .eq('id', keywordId);
         
-        if (error) throw error;
+        if (error) {
+            if (handleSessionError(error)) return;
+            throw error;
+        }
         
         console.log('✅ Parola chiave eliminata');
         
@@ -318,7 +371,10 @@ async function loadLibrariesFromSupabase() {
             .select('*')
             .order('name');
         
-        if (error) throw error;
+        if (error) {
+            if (handleSessionError(error)) return;
+            throw error;
+        }
         
         userLibraries = data.map(lib => ({
             id: lib.id,
@@ -347,7 +403,10 @@ async function saveLibraryToSupabase(libraryName) {
             .select()
             .single();
         
-        if (error) throw error;
+        if (error) {
+            if (handleSessionError(error)) return;
+            throw error;
+        }
         
         console.log('✅ Libreria salvata:', data.id);
         return data.id;
@@ -366,7 +425,10 @@ async function deleteLibraryFromSupabase(libraryId) {
             .delete()
             .eq('id', libraryId);
         
-        if (error) throw error;
+        if (error) {
+            if (handleSessionError(error)) return;
+            throw error;
+        }
         
         console.log('✅ Libreria eliminata');
         
