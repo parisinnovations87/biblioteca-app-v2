@@ -22,19 +22,17 @@ async function initializeAuth() {
     supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('🔄 Auth event:', event);
         
+        // Gestisci solo eventi specifici, non SIGNED_IN durante operazioni normali
         if (event === 'TOKEN_REFRESHED') {
             console.log('🔄 Token refreshato automaticamente');
-        }
-        
-        if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+            // Non ricaricare i dati, solo il token è stato aggiornato
+        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
             handleSignOut();
-        }
-        
-        if (event === 'SIGNED_IN' && session?.user) {
+        } else if (event === 'INITIAL_SESSION' && session?.user) {
+            // Solo al caricamento iniziale
             await handleAuthSuccess(session.user);
-        } else if (event === 'SIGNED_OUT') {
-            handleSignOut();
         }
+        // Ignora SIGNED_IN perché viene triggerato troppo spesso
     });
 }
 
