@@ -3,37 +3,61 @@
 // ========================================
 
 let currentUser = null;
+let isInitialized = false;
 
 // Inizializza autenticazione
 async function initializeAuth() {
     console.log('🔐 Inizializzazione autenticazione...');
     
-    // Controlla se c'è già una sessione attiva
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session?.user) {
-        console.log('✅ Sessione trovata:', session.user.email);
-        await handleAuthSuccess(session.user);
-    } else {
-        console.log('ℹ️ Nessuna sessione attiva');
-    }
-    
-    // Ascolta i cambiamenti di autenticazione
-    supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('🔄 Auth event:', event);
+    try {
+        // Controlla se c'è già una sessione attiva
+        const { data: { session }, error } = await supabase.auth.getSession();
         
-        // Gestisci solo eventi specifici, non SIGNED_IN durante operazioni normali
-        if (event === 'TOKEN_REFRESHED') {
-            console.log('🔄 Token refreshato automaticamente');
-            // Non ricaricare i dati, solo il token è stato aggiornato
-        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-            handleSignOut();
-        } else if (event === 'INITIAL_SESSION' && session?.user) {
-            // Solo al caricamento iniziale
-            await handleAuthSuccess(session.user);
+        if (error) {
+            console.error('❌ Errore recupero sessione:', error);
+            return;
         }
-        // Ignora SIGNED_IN perché viene triggerato troppo spesso
-    });
+        
+        if (session?.user) {
+            console.log('✅ Sessione trovata:', session.user.email);
+            await handleAuthSuccess(session.user);
+            isInitialized = true;
+        } else {
+            console.log('ℹ️ Nessuna sessione attiva');
+        }
+        
+        // Ascolta i cambiamenti di autenticazione
+        supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('🔄 Auth event:', event);
+            
+            if (event === 'TOKEN_REFRESHED') {
+                console.log('🔄 Token refreshato automaticamente');
+                // Non ricaricare i dati quando il token viene refreshato
+                return;
+            }
+            
+            if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+                handleSignOut();
+                isInitialized = false;
+                return;
+            }
+            
+            if (event === 'INITIAL_SESSION' && session?.user && !isInitialized) {
+                // Solo al primo caricamento
+                await handleAuthSuccess(session.user);
+                isInitialized = true;
+                return;
+            }
+            
+            // Ignora tutti gli altri eventi SIGNED_IN per evitare ricaricamenti continui
+            if (event === 'SIGNED_IN') {
+                console.log('ℹ️ Evento SIGNED_IN ignorato (già inizializzato)');
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Errore inizializzazione auth:', error);
+    }
 }
 
 // Login con Google
@@ -45,7 +69,7 @@ async function signInWithGoogle() {
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: 'https://biblioteca-app-v2.netlify.app/'
+                redirectTo: 'https://biblioteca-app-v2.netlify.app'
             }
         });
         
@@ -81,7 +105,12 @@ async function handleAuthSuccess(user) {
     
     setLoginLoading(false);
     showApp();
-    await loadAllUserData();
+    
+    // Carica i dati SOLO se non sono già stati caricati
+    if (!isInitialized) {
+        await loadAllUserData();
+    }
+    
     showAlert(`Benvenuto ${currentUser.name}!`, 'success');
 }
 
@@ -147,6 +176,7 @@ function handleSignOut() {
     userLibraries = [];
     userCategories = [];
     userKeywords = [];
+    isInitialized = false;
     
     hideApp();
     clearForm();
