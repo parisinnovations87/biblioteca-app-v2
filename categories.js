@@ -51,36 +51,74 @@ async function addCategory() {
 
 // Elimina categoria
 async function deleteCategory(categoryName) {
+    console.log('🔵 deleteCategory chiamata per:', categoryName);
+    console.log('🔵 Lista categorie corrente:', userCategories);
+    
     // Trova la categoria
     const category = userCategories.find(cat => cat.name === categoryName);
-    if (!category) return;
+    
+    console.log('🔵 Categoria trovata:', category);
+    
+    if (!category) {
+        console.error('❌ Categoria non trovata:', categoryName);
+        showAlert('Categoria non trovata', 'error');
+        return;
+    }
     
     // Controlla se ci sono libri in questa categoria
     const booksInCategory = books.filter(book => book.genre === categoryName);
     
+    console.log('🔵 Libri in questa categoria:', booksInCategory.length);
+    
+    let confirmMessage = '';
     if (booksInCategory.length > 0) {
-        if (!confirm(`Ci sono ${booksInCategory.length} libri in questa categoria. Eliminandola, dovrai riassegnare i libri. Continuare?`)) {
-            return;
-        }
+        confirmMessage = `Ci sono ${booksInCategory.length} libri in questa categoria.\n\nEliminandola, i libri rimarranno senza categoria.\n\nContinuare?`;
     } else {
-        if (!confirm(`Sei sicuro di voler eliminare la categoria "${categoryName}"?`)) {
-            return;
-        }
+        confirmMessage = `Sei sicuro di voler eliminare la categoria "${categoryName}"?`;
+    }
+    
+    const confirmed = confirm(confirmMessage);
+    console.log('🔵 Utente ha confermato:', confirmed);
+    
+    if (!confirmed) {
+        console.log('🔵 Cancellazione annullata dall\'utente');
+        return;
     }
     
     try {
+        console.log('🗑️ Tentativo eliminazione categoria:', categoryName, 'ID:', category.id);
+        
+        // Elimina da Supabase
         await deleteCategoryFromSupabase(category.id);
+        
+        console.log('✅ Eliminazione da Supabase completata');
         
         // Rimuovi dalla lista locale
         userCategories = userCategories.filter(cat => cat.id !== category.id);
         
+        console.log('✅ Rimossa dalla lista locale');
+        
+        // Aggiorna i libri locali
+        books.forEach(book => {
+            if (book.genre === categoryName) {
+                book.genre = '';
+                book.categoryId = null;
+            }
+        });
+        
+        console.log('✅ Libri aggiornati');
+        
         updateCategoryDropdown();
         displayCategories();
+        displayBooks();
         
-        showAlert('Categoria eliminata', 'success');
+        console.log('✅ UI aggiornata');
+        
+        showAlert('Categoria eliminata con successo', 'success');
         
     } catch (error) {
-        console.error('❌ Errore eliminazione categoria:', error);
+        console.error('❌ ERRORE eliminazione categoria:', error);
+        console.error('❌ Stack trace:', error.stack);
         showAlert('Errore durante l\'eliminazione: ' + error.message, 'error');
     }
 }
