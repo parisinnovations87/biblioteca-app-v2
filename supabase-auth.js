@@ -22,6 +22,14 @@ async function initializeAuth() {
     supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('🔄 Auth event:', event);
         
+        if (event === 'TOKEN_REFRESHED') {
+            console.log('🔄 Token refreshato automaticamente');
+        }
+        
+        if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+            handleSignOut();
+        }
+        
         if (event === 'SIGNED_IN' && session?.user) {
             await handleAuthSuccess(session.user);
         } else if (event === 'SIGNED_OUT') {
@@ -115,18 +123,22 @@ async function signOut() {
             stopScanner();
         }
         
-        const { error } = await supabase.auth.signOut();
-        
-        if (error) {
-            throw error;
+        // Prova il logout, ma continua anche se fallisce
+        try {
+            await supabase.auth.signOut();
+        } catch (logoutError) {
+            console.warn('⚠️ Errore durante signOut (ignorato):', logoutError);
         }
         
+        // Pulisci sempre i dati locali, anche se il logout ha dato errore
         handleSignOut();
         showAlert('Logout effettuato con successo', 'info');
         
     } catch (error) {
         console.error('❌ Errore logout:', error);
-        showAlert('Errore durante il logout', 'error');
+        // Anche in caso di errore, pulisci i dati locali
+        handleSignOut();
+        showAlert('Logout locale effettuato', 'info');
     }
 }
 
@@ -203,5 +215,4 @@ async function loadAllUserData() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📚 Biblioteca Domestica - Inizializzazione...');
     initializeAuth();
-
 });
