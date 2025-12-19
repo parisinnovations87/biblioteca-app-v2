@@ -8,8 +8,8 @@ const SUPABASE_CONFIG = {
     ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVvdHZ4dGl2YXhtZ25wemFyc2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5NzE3NzYsImV4cCI6MjA4MDU0Nzc3Nn0.aR5sosyeS3wDT9x93BLBQ79CiD8dpVYlHMr-G7Ggbbo'
 };
 
-// Aspetta che la libreria Supabase sia caricata
-let supabase = null;
+// Dichiara supabase come variabile globale
+let supabase;
 let supabaseInitAttempts = 0;
 const MAX_INIT_ATTEMPTS = 50; // 5 secondi massimo
 
