@@ -28,3 +28,6 @@ if (DEV_MODE) {
 }
 
 console.log('✅ Config caricato');
+
+// NOTA: supabase viene dichiarato e inizializzato in supabase-config.js
+// NON dichiararlo qui!
