@@ -294,12 +294,5 @@ async function testSupabaseConnection() {
     }
 }
 
-// Inizializza quando il DOM è pronto
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('📚 Biblioteca Domestica - Inizializzazione...');
-    
-    // Test connessione al caricamento (utile per debug)
-    testSupabaseConnection();
-    
-    initializeAuth();
-});
+// NON inizializzare qui - viene fatto da supabase-config.js
+console.log('✅ supabase-auth.js caricato');
