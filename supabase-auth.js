@@ -1,5 +1,5 @@
 // ========================================
-// AUTENTICAZIONE CON SUPABASE
+// AUTENTICAZIONE CON SUPABASE - FIX LOGIN
 // ========================================
 
 let currentUser = null;
@@ -32,7 +32,6 @@ async function initializeAuth() {
             
             if (event === 'TOKEN_REFRESHED') {
                 console.log('🔄 Token refreshato automaticamente');
-                // Non ricaricare i dati quando il token viene refreshato
                 return;
             }
             
@@ -43,15 +42,15 @@ async function initializeAuth() {
             }
             
             if (event === 'INITIAL_SESSION' && session?.user && !isInitialized) {
-                // Solo al primo caricamento
                 await handleAuthSuccess(session.user);
                 isInitialized = true;
                 return;
             }
             
-            // Ignora tutti gli altri eventi SIGNED_IN per evitare ricaricamenti continui
-            if (event === 'SIGNED_IN') {
-                console.log('ℹ️ Evento SIGNED_IN ignorato (già inizializzato)');
+            if (event === 'SIGNED_IN' && session?.user && !isInitialized) {
+                console.log('✅ Login completato');
+                await handleAuthSuccess(session.user);
+                isInitialized = true;
             }
         });
         
@@ -60,16 +59,24 @@ async function initializeAuth() {
     }
 }
 
-// Login con Google
+// Login con Google - VERSIONE AGGIORNATA
 async function signInWithGoogle() {
     try {
         console.log('🔐 Avvio login Google...');
         setLoginLoading(true);
         
+        // Ottieni l'URL corrente per il redirect
+        const currentUrl = window.location.origin + window.location.pathname;
+        console.log('📍 Redirect URL:', currentUrl);
+        
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: 'https://biblioteca-app-v2.netlify.app'
+                redirectTo: currentUrl,
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'consent',
+                }
             }
         });
         
@@ -77,13 +84,32 @@ async function signInWithGoogle() {
             throw error;
         }
         
+        console.log('✅ Redirect a Google in corso...');
         // Il redirect avverrà automaticamente
-        console.log('✅ Redirect a Google...');
         
     } catch (error) {
         console.error('❌ Errore login:', error);
-        showAlert('Errore durante il login: ' + error.message, 'error');
+        
+        // Messaggio più dettagliato
+        let errorMessage = 'Errore durante il login';
+        
+        if (error.message.includes('popup')) {
+            errorMessage = 'Popup bloccato. Consenti i popup per questo sito e riprova.';
+        } else if (error.message.includes('network')) {
+            errorMessage = 'Errore di connessione. Controlla la tua connessione internet.';
+        } else {
+            errorMessage = error.message;
+        }
+        
+        showAlert(errorMessage, 'error');
         setLoginLoading(false);
+        
+        // Mostra anche un alert di debug
+        console.log('📋 Copia questo errore per il debug:', {
+            message: error.message,
+            code: error.code,
+            status: error.status
+        });
     }
 }
 
@@ -128,7 +154,7 @@ async function createOrUpdateUserProfile(user) {
             .select()
             .single();
         
-        if (error && error.code !== '23505') { // Ignora errore duplicate key
+        if (error && error.code !== '23505') {
             console.error('⚠️ Errore creazione profilo:', error);
         } else {
             console.log('✅ Profilo utente sincronizzato');
@@ -150,20 +176,19 @@ async function signOut() {
             stopScanner();
         }
         
-        // Prova il logout, ma continua anche se fallisce
+        // Prova il logout
         try {
             await supabase.auth.signOut();
         } catch (logoutError) {
             console.warn('⚠️ Errore durante signOut (ignorato):', logoutError);
         }
         
-        // Pulisci sempre i dati locali, anche se il logout ha dato errore
+        // Pulisci sempre i dati locali
         handleSignOut();
         showAlert('Logout effettuato con successo', 'info');
         
     } catch (error) {
         console.error('❌ Errore logout:', error);
-        // Anche in caso di errore, pulisci i dati locali
         handleSignOut();
         showAlert('Logout locale effettuato', 'info');
     }
@@ -239,8 +264,42 @@ async function loadAllUserData() {
     console.log('✅ Dati caricati');
 }
 
+// TEST MANUALE DELLA CONNESSIONE
+async function testSupabaseConnection() {
+    console.log('🧪 Test connessione Supabase...');
+    
+    try {
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+            console.error('❌ Errore sessione:', error);
+            showAlert('Errore connessione: ' + error.message, 'error');
+            return false;
+        }
+        
+        console.log('✅ Connessione OK');
+        console.log('📊 Sessione:', data.session ? 'Attiva' : 'Nessuna');
+        
+        if (data.session) {
+            console.log('👤 Utente:', data.session.user.email);
+        }
+        
+        showAlert('Connessione Supabase OK!', 'success');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Errore test:', error);
+        showAlert('Errore test connessione', 'error');
+        return false;
+    }
+}
+
 // Inizializza quando il DOM è pronto
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📚 Biblioteca Domestica - Inizializzazione...');
+    
+    // Test connessione al caricamento (utile per debug)
+    testSupabaseConnection();
+    
     initializeAuth();
 });
