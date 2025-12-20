@@ -1,5 +1,5 @@
 // ========================================
-// OPERAZIONI DATABASE SUPABASE
+// OPERAZIONI DATABASE SUPABASE - FIXED
 // ========================================
 
 // Gestione errori sessione
@@ -39,7 +39,7 @@ async function loadBooksFromSupabase() {
         
         // Trasforma i dati nel formato dell'app
         books = data.map(book => ({
-            id: book.id.toString(),
+            id: book.id.toString(), // ✅ USA L'ID DAL DATABASE
             title: book.title,
             author: book.author || '',
             isbn: book.isbn || '',
@@ -63,40 +63,44 @@ async function loadBooksFromSupabase() {
         
     } catch (error) {
         console.error('❌ Errore caricamento libri:', error);
-        showAlert('Errore caricamento libri: ' + error.message, 'error');
+        showToast('Errore caricamento libri: ' + error.message, 'error');
         books = [];
     }
 }
 
-// Salva nuovo libro
+// Salva nuovo libro - ✅ FIX: Non passiamo più l'ID manualmente
 async function saveBookToSupabase(bookData) {
     try {
         console.log('💾 Salvataggio libro...');
         
-        // 1. Inserisci il libro
+        // ✅ FIX: NON passare "id" - lo genera il database!
         const { data: book, error: bookError } = await supabase
-    	    .from('books')
-    	    .insert({
-        	// ✅ NIENTE id: ... qui!
-        	user_id: currentUser.id,
-        	title: bookData.title,
-        	author: bookData.author || null,
-        	isbn: bookData.isbn || null,
-        	publisher: bookData.publisher || null,
-        	year: bookData.year ? parseInt(bookData.year) : null,
-        	category_id: bookData.categoryId || null,
-        	library_id: bookData.libraryId || null,
-        	position: bookData.position || null,
-        	condition: bookData.condition || null,
-        	notes: bookData.notes || null
-    })
-    .select()
-    .single();
+            .from('books')
+            .insert({
+                // ❌ RIMOSSO: id: ... (causa del duplicate key error!)
+                user_id: currentUser.id,
+                title: bookData.title,
+                author: bookData.author || null,
+                isbn: bookData.isbn || null,
+                publisher: bookData.publisher || null,
+                year: bookData.year ? parseInt(bookData.year) : null,
+                category_id: bookData.categoryId || null,
+                library_id: bookData.libraryId || null,
+                position: bookData.position || null,
+                condition: bookData.condition || null,
+                notes: bookData.notes || null
+            })
             .select()
             .single();
         
         if (bookError) {
             if (handleSessionError(bookError)) return;
+            
+            // ✅ Messaggio errore più chiaro
+            if (bookError.code === '23505') {
+                throw new Error('Questo libro esiste già nel database');
+            }
+            
             throw bookError;
         }
         
@@ -440,3 +444,5 @@ async function deleteLibraryFromSupabase(libraryId) {
         throw error;
     }
 }
+
+console.log('✅ supabase-db.js caricato (FIXED)');
