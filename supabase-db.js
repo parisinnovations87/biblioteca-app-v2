@@ -75,20 +75,23 @@ async function saveBookToSupabase(bookData) {
         
         // 1. Inserisci il libro
         const { data: book, error: bookError } = await supabase
-            .from('books')
-            .insert({
-                user_id: currentUser.id,
-                title: bookData.title,
-                author: bookData.author || null,
-                isbn: bookData.isbn || null,
-                publisher: bookData.publisher || null,
-                year: bookData.year ? parseInt(bookData.year) : null,
-                category_id: bookData.categoryId || null,
-                library_id: bookData.libraryId || null,
-                position: bookData.position || null,
-                condition: bookData.condition || null,
-                notes: bookData.notes || null
-            })
+    	    .from('books')
+    	    .insert({
+        	// ✅ NIENTE id: ... qui!
+        	user_id: currentUser.id,
+        	title: bookData.title,
+        	author: bookData.author || null,
+        	isbn: bookData.isbn || null,
+        	publisher: bookData.publisher || null,
+        	year: bookData.year ? parseInt(bookData.year) : null,
+        	category_id: bookData.categoryId || null,
+        	library_id: bookData.libraryId || null,
+        	position: bookData.position || null,
+        	condition: bookData.condition || null,
+        	notes: bookData.notes || null
+    })
+    .select()
+    .single();
             .select()
             .single();
         
