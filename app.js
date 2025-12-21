@@ -391,29 +391,13 @@ function updateSearchFilters() {
 }
 
 function showAlert(message, type) {
-    const alertContainer = document.getElementById('alertContainer');
-    
-    if (!alertContainer) {
+    // Usa il sistema toast invece degli alert tradizionali
+    if (typeof showToast !== 'undefined') {
+        showToast(message, type);
+    } else {
+        // Fallback se il sistema toast non è ancora caricato
         console.log(`${type.toUpperCase()}: ${message}`);
-        return;
     }
-    
-    const existingAlerts = alertContainer.querySelectorAll('.alert');
-    existingAlerts.forEach(alert => alert.remove());
-    
-    const alert = document.createElement('div');
-    alert.className = `alert alert-${type}`;
-    alert.textContent = message;
-    
-    alertContainer.appendChild(alert);
-    
-    setTimeout(() => {
-        if (alert.parentNode) {
-            alert.remove();
-        }
-    }, 5000);
-    
-    alert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // === SCANNER BARCODE ===
