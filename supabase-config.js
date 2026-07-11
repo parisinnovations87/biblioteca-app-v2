@@ -6,8 +6,8 @@ console.log('📦 Caricamento supabase-config.js...');
 
 // Configurazione Supabase
 const SUPABASE_CONFIG = {
-    URL: 'https://uotvxtivaxmgnpzarsda.supabase.co',
-    ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVvdHZ4dGl2YXhtZ25wemFyc2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5NzE3NzYsImV4cCI6MjA4MDU0Nzc3Nn0.aR5sosyeS3wDT9x93BLBQ79CiD8dpVYlHMr-G7Ggbbo'
+    URL: 'https://grjiapepzhposxwjpzvh.supabase.co',
+    ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyamlhcGVwemhwb3N4d2pwenZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3OTA1NzUsImV4cCI6MjA5OTM2NjU3NX0.U0Qdk-IhWEimBeM4BTtwkAUSgk340Bzo3NqzqFIRFdY'
 };
 
 // Variabile globale per il client Supabase
